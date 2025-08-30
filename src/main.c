@@ -13,37 +13,40 @@
 #include "get_ext.h"
 #include "get_mime.h"
 
+
 #define PORT 8080
 #define BUF_SIZE 104857600
-#define BACKLOG 10
+#define BACKLOG 128
 
 void 
 build_http_response(char *filename, char *file_ext, char *response, size_t *response_len)
 { 
   // if implicit filename -> 403
-  if(strstr(filename, ".."))
+  char *rootdir = realpath(".", NULL);
+  char *resolved_path = realpath(filename, NULL);
+  if(resolved_path && strstr(resolved_path, rootdir) != resolved_path)
   {
     snprintf(response, BUF_SIZE,
              "HTTP/1.1 403 Forbidden\r\n"
-             "Content-Type: text/plain\r\n"
+             "Content-Type: text/html\r\n"
              "\r\n"
              "403 Forbidden");
     *response_len = strlen(response);
-    
+    free(rootdir);
+    free(resolved_path);
     return;
   }
  
   // if file doesn't exist -> 404
-  int f = open(filename, O_RDONLY);
+  int f = open(resolved_path, O_RDONLY);
   if(f == -1)
   {
     snprintf(response, BUF_SIZE,
              "HTTP/1.1 404 Not Found\r\n"
-             "Content-Type: text/plain\r\n"
+             "Content-Type: text/html\r\n"
              "\r\n"
              "404 Not Found");
     *response_len = strlen(response);
-    
     return;
   }
 
@@ -52,22 +55,29 @@ build_http_response(char *filename, char *file_ext, char *response, size_t *resp
   off_t file_size = file_stat.st_size;
 
   const char *mime = get_mime(file_ext);
-  snprintf(response, BUF_SIZE, 
+  if(resolved_path && strstr(resolved_path, rootdir) == resolved_path)
+  {
+    snprintf(response, BUF_SIZE, 
            "HTTP/1.1 200 OK\r\n"
-           "Content-Type: text/html\r\n"
+           "Content-Type: %s\r\n"
            "\r\n",
            mime, file_size);
-  
+  }
+
   (*response_len) = strlen(response);
 
   ssize_t bytes_r;
-  while ((bytes_r = read(f, response + *response_len, BUF_SIZE - *response_len)) > 0)
-  {
-    (*response_len) += bytes_r;
-  }
-  close(f);
-}
+  while((bytes_r = read(f, response + *response_len, BUF_SIZE - *response_len)) > 0)
+    {
+      (*response_len) += bytes_r;
+    }
+  
 
+  close(f);
+  free(rootdir);
+  free(resolved_path);
+  
+}
 void
 *handle_client(void *arg)
 {
@@ -93,6 +103,8 @@ void
         perror("[ERROR] No file found");
         close(client_fd);
         free(buf);
+        regfree(&reg);
+        return NULL;
       }
 
       urldecode(file_name, encoded_file_name);
@@ -106,13 +118,16 @@ void
 
       send(client_fd, response, response_len, 0);
 
+      free(response);
       free(file_name);
+      free(buf);
 
     }
     regfree(&reg);
   }
 
   close(client_fd);
+  return NULL;
 }
 
 int 
@@ -170,4 +185,5 @@ main(void)
   }
 
   close(sfd); // don't forget to close ;d
+
 }
