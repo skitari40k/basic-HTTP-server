@@ -13,8 +13,10 @@ This project is a simple multithreaded HTTP server written in C that processes G
 
 # Build and launch
 make
+
 ./server
 The server will be running on port 8080. You can use a browser or curl for testing.:
+
 curl http://localhost:8080/index.html
 
 # Problems and solutions
