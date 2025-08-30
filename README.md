@@ -18,7 +18,9 @@ make
 
 The server will be running on port 8080. You can use a browser or curl for testing.:
 
-curl http://localhost:8080/index.html
+curl http://localhost:8080/test.html
+
+To make sure it displays .html correctly, you can go to localhost:8080/test.html
 
 # Problems and solutions
 
