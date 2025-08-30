@@ -118,7 +118,7 @@ void
 int 
 main(void)
 {
-  int sfd, new_sock;
+  int sfd;
   struct sockaddr_in address; 
   size_t addr_len = sizeof(address);
 
